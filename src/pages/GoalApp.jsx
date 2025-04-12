@@ -7,22 +7,93 @@ import PlanViewer from "../components/PlanViewer";
 import CalendarSyncButton from "../components/CalendarSyncButton";
 import Squares from "../components/Squares"; // Import the Squares component
 
+const API_BASE_URL = "http://127.0.0.1:8000";
+
 function GoalApp() {
   const [goal, setGoal] = useState("");
   const [hoursPerDay, setHoursPerDay] = useState("");
   const [timeSlot, setTimeSlot] = useState({ start: "", end: "" });
   const [plan, setPlan] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleGeneratePlan = async () => {
-    console.log("Goal:", goal);
-    console.log("Hours/Day:", hoursPerDay);
-    console.log("Time Interval:", timeSlot);
-    const dummyPlan = [
-      "Day 1: Learn syntax",
-      "Day 2: Data types",
-      "Day 3: Functions",
-    ];
-    setPlan(dummyPlan);
+    if (!goal || !hoursPerDay || !timeSlot.start || !timeSlot.end) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/generate-plan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ goal, hoursPerDay, timeSlot }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate plan");
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setPlan(data.plan);
+    } catch (error) {
+      console.error("Error generating plan:", error);
+      setError(error.message || "Failed to generate plan. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!goal || !hoursPerDay || !timeSlot.start || !timeSlot.end) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/generate-plan-pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ goal, hoursPerDay, timeSlot }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "study_plan.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      setError(error.message || "Failed to download PDF. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,7 +128,10 @@ function GoalApp() {
               ></path>
             </svg>
           </span>
-          GoalMineAI
+          GoalAssist
+        </Link>
+        <Link to="/" className="text-white hover:text-blue-200 transition">
+          Back to Home
         </Link>
       </nav>
 
@@ -71,6 +145,12 @@ function GoalApp() {
           </div>
 
           <div className="p-6 space-y-6">
+            {error && (
+              <div className="bg-red-900 bg-opacity-50 border border-red-700 text-white p-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
             <GoalInput goal={goal} setGoal={setGoal} />
 
             <AvailabilityForm
@@ -82,17 +162,101 @@ function GoalApp() {
 
             <button
               onClick={handleGeneratePlan}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg transform hover:-translate-y-1 font-medium"
+              disabled={isLoading}
+              className={`w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg transform hover:-translate-y-1 font-medium flex items-center justify-center ${
+                isLoading ? "opacity-70 cursor-not-allowed" : ""
+              }`}
             >
-              Generate Plan
+              {isLoading ? (
+                <>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                "Generate Plan"
+              )}
             </button>
 
             {plan.length > 0 && (
               <div className="space-y-6 pt-4 border-t border-blue-800">
                 <PlanViewer plan={plan} />
-                <CalendarSyncButton
-                  onClick={() => alert("Sync logic will go here")}
-                />
+
+                <div className="flex flex-col md:flex-row gap-4">
+                  <CalendarSyncButton
+                    onClick={() => alert("Sync logic will go here")}
+                  />
+
+                  <button
+                    onClick={handleDownloadPDF}
+                    disabled={isLoading}
+                    className={`px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center md:flex-1 ${
+                      isLoading ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          ></path>
+                        </svg>
+                        Download PDF
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>
