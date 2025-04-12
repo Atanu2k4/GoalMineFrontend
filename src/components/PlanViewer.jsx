@@ -1,27 +1,31 @@
 export default function PlanViewer({ plan }) {
   const formatText = (text) => {
-    // Parse the plan data into structured format
     const planItems = Array.isArray(plan) ? plan : [text];
     const days = [];
     let currentDay = {};
 
     planItems.forEach((item) => {
-      if (item.includes("Day")) {
+      const cleanItem = item.replace(/["""'']/g, "").trim();
+
+      if (cleanItem.includes("Day")) {
         if (Object.keys(currentDay).length > 0) {
           days.push(currentDay);
         }
-        currentDay = { day: item };
-      } else if (item.includes("Topics:")) {
-        currentDay.topics = item.replace("Topics:", "").trim();
-      } else if (item.includes("Time Allotted:")) {
-        currentDay.time = item.replace("Time Allotted:", "").trim();
+        currentDay = { day: cleanItem };
+      } else if (cleanItem.includes("Topics:")) {
+        currentDay.topics = cleanItem
+          .replace("Topics:", "")
+          .replace(/\s+/g, " ")
+          .trim();
+      } else if (cleanItem.includes("Time Allotted:")) {
+        currentDay.time = cleanItem.replace("Time Allotted:", "").trim();
       }
     });
+
     if (Object.keys(currentDay).length > 0) {
       days.push(currentDay);
     }
 
-    // Format each day's content
     return days
       .map((dayData) => {
         const dayNumber = dayData.day.split(" ")[1];
@@ -35,45 +39,32 @@ export default function PlanViewer({ plan }) {
           weekday: "long",
         });
 
-        // Clean up topics by removing extra spaces and empty items
-        const cleanTopics = dayData.topics
-          .split(",")
-          .map((topic) => topic.trim())
-          .filter((topic) => topic.length > 0);
+        const topicsText = dayData.topics
+          .replace(/\s*\(\s*/g, " (")
+          .replace(/\s*\)\s*/g, ") ")
+          .replace(/\s+/g, " ")
+          .trim();
 
-        // Clean up time entries by removing quotes and extra spaces
-        const cleanTimes = dayData.time
+        const timesText = dayData.time
           .split(";")
-          .map((time) => time.trim().replace(/["']/g, ""))
-          .filter((time) => time.length > 0);
+          .map((time) => time.trim())
+          .filter((time) => time)
+          .join("\n");
 
         return `
-        <div class="day-plan mb-6">
-          <h3 class="text-2xl font-bold text-blue-400 mb-4 border-b border-blue-700 pb-2">
+        <div class="day-plan mb-8 p-6 bg-black bg-opacity-40 rounded-lg border border-blue-700">
+          <h3 class="text-2xl font-bold text-blue-400 mb-4 pb-2 border-b border-blue-700">
             Day ${dayNumber}: ${formattedDate}
           </h3>
 
-          <div class="mb-4">
-            <h4 class="text-lg font-semibold text-blue-300 mb-2">Topics to Study:</h4>
-            <ul class="list-disc list-inside space-y-1 text-white pl-4">
-              ${cleanTopics
-                .map((topic) => `<li class="mb-2">${topic}</li>`)
-                .join("")}
-            </ul>
+          <div class="mb-6">
+            <h4 class="text-lg font-semibold text-blue-300 mb-3">Topics to Study:</h4>
+            <p class="text-white leading-relaxed">${topicsText}</p>
           </div>
 
-          <div class="mb-4">
-            <h4 class="text-lg font-semibold text-blue-300 mb-2">Study Schedule:</h4>
-            <div class="pl-4 space-y-2">
-              ${cleanTimes
-                .map(
-                  (time) =>
-                    `<div class="flex items-center">
-                    <span class="text-green-400 font-mono">${time}</span>
-                  </div>`
-                )
-                .join("")}
-            </div>
+          <div>
+            <h4 class="text-lg font-semibold text-blue-300 mb-3">Study Schedule:</h4>
+            <p class="text-green-400 font-mono whitespace-pre-line">${timesText}</p>
           </div>
         </div>
       `;
@@ -84,11 +75,7 @@ export default function PlanViewer({ plan }) {
   return (
     <div className="mt-6">
       <h2 className="text-2xl font-bold mb-6 text-white">Your Study Plan</h2>
-      <div className="space-y-4">
-        <div className="bg-black bg-opacity-40 rounded-lg p-6 border border-blue-700">
-          <div dangerouslySetInnerHTML={{ __html: formatText(plan) }} />
-        </div>
-      </div>
+      <div dangerouslySetInnerHTML={{ __html: formatText(plan) }} />
     </div>
   );
 }
