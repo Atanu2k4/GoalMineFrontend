@@ -1,35 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react";
+import GoalInput from "./components/GoalInput";
+import AvailabilityForm from "./components/AvailabilityForm";
+import PlanViewer from "./components/PlanViewer";
+import CalendarSyncButton from "./components/CalendarSyncButton";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [goal, setGoal] = useState("");
+  const [hoursPerDay, setHoursPerDay] = useState("");
+  const [timeSlot, setTimeSlot] = useState({ start: "", end: "" });
+  const [plan, setPlan] = useState([]);
+
+  const handleGeneratePlan = async () => {
+    // This will later call Gemini API with user inputs
+    console.log("Goal:", goal);
+    console.log("Hours/Day:", hoursPerDay);
+    console.log("Time Interval:", timeSlot);
+
+    const dummyPlan = [
+      "Day 1: Learn syntax",
+      "Day 2: Data types",
+      "Day 3: Functions",
+    ];
+    setPlan(dummyPlan);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="max-w-2xl mx-auto mt-10 p-6 shadow rounded-lg bg-white">
+      <h1 className="text-2xl font-bold mb-6 text-center">AI Goal Assistant</h1>
+
+      <GoalInput goal={goal} setGoal={setGoal} />
+
+      <AvailabilityForm
+        hoursPerDay={hoursPerDay}
+        setHoursPerDay={setHoursPerDay}
+        timeSlot={timeSlot}
+        setTimeSlot={setTimeSlot}
+      />
+
+      <button
+        onClick={handleGeneratePlan}
+        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 mt-4"
+      >
+        Generate Plan
+      </button>
+
+      {plan.length > 0 && (
+        <>
+          <PlanViewer plan={plan} />
+          <CalendarSyncButton
+            onClick={() => alert("Sync logic will go here")}
+          />
+        </>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;
