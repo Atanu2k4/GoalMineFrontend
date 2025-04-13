@@ -70,20 +70,24 @@ const Navbar = () => {
                   <img
                     src={user.photoURL}
                     alt="Profile"
-                    className="w-8 h-8 rounded-full border-2 border-blue-500"
+                    className="w-8 h-8 rounded-full border-2 border-blue-500 object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                    {user.displayName?.charAt(0) || user.email?.charAt(0)}
+                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
+                    {user.displayName?.charAt(0).toUpperCase() ||
+                      user.email?.charAt(0).toUpperCase()}
                   </div>
                 )}
+                <span className="hidden md:block text-sm font-medium">
+                  {user.displayName || user.email?.split("@")[0]}
+                </span>
               </button>
 
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-48 bg-black bg-opacity-90 border border-blue-700 rounded-lg shadow-xl py-1 z-50">
                   <div className="px-4 py-2 border-b border-blue-700">
                     <p className="text-sm text-white font-medium truncate">
-                      {user.displayName || user.email}
+                      {user.email}
                     </p>
                   </div>
                   <button
