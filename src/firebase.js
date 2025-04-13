@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD-G7bZT77_Dq_MKrP_nrQveCF-hBCOIXM",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "goalmine-bcc41.firebaseapp.com",
   projectId: "goalmine-bcc41",
   storageBucket: "goalmine-bcc41.firebasestorage.app",
