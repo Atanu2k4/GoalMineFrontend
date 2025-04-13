@@ -19,9 +19,10 @@ export default function CalendarSyncButton({ plan }) {
       // Get fresh token
       const token = await user.getIdToken(true);
 
-      // Open Google auth window
+      // Open Google auth window with state parameter
+      const state = btoa(JSON.stringify({ token, userId: user.uid }));
       const authWindow = window.open(
-        "http://localhost:8000/auth/google",
+        `http://localhost:8000/auth/google?state=${state}`,
         "Google Calendar Authorization",
         "width=600,height=600"
       );
@@ -30,39 +31,50 @@ export default function CalendarSyncButton({ plan }) {
       const authResult = await new Promise((resolve, reject) => {
         window.addEventListener(
           "message",
-          (event) => {
+          async (event) => {
             if (event.origin !== "http://localhost:8000") return;
 
             if (event.data.type === "calendar_auth_success") {
-              resolve(event.data.credentials);
+              // Send the plan to backend with the credentials
+              const response = await fetch(
+                "http://localhost:8000/sync-calendar",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    plan,
+                    calendar_credentials: event.data.credentials,
+                  }),
+                }
+              );
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                reject(
+                  new Error(errorData.detail || "Failed to sync with calendar")
+                );
+                return;
+              }
+
+              const data = await response.json();
+              resolve(data);
             } else if (event.data.type === "calendar_auth_error") {
               reject(new Error(event.data.error));
             }
           },
           { once: true }
-        ); // Remove listener after first use
+        );
+
+        // Add timeout
+        setTimeout(() => {
+          reject(new Error("Authentication timed out"));
+        }, 300000); // 5 minutes timeout
       });
 
-      // Now sync with calendar using obtained credentials
-      const response = await fetch("http://localhost:8000/sync-calendar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          plan,
-          calendar_credentials: authResult,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to sync with calendar");
-      }
-
-      const data = await response.json();
-      console.log("Calendar sync successful:", data);
+      console.log("Calendar sync successful:", authResult);
     } catch (err) {
       console.error("Calendar sync error:", err);
       setError(err.message);
