@@ -2,16 +2,25 @@ export default function PlanViewer({ plan }) {
   const formatText = (text) => {
     const planItems = Array.isArray(plan) ? plan : [text];
     const days = [];
-    let currentDay = {};
+    let currentDay = {
+      topics: "", // Initialize with empty string
+      time: "", // Initialize with empty string
+    };
 
     planItems.forEach((item) => {
+      if (!item) return; // Skip if item is null or undefined
+
       const cleanItem = item.replace(/["""'']/g, "").trim();
 
       if (cleanItem.includes("Day")) {
         if (Object.keys(currentDay).length > 0) {
-          days.push(currentDay);
+          days.push({ ...currentDay }); // Clone the object
         }
-        currentDay = { day: cleanItem };
+        currentDay = {
+          day: cleanItem,
+          topics: "", // Reset with empty string
+          time: "", // Reset with empty string
+        };
       } else if (cleanItem.includes("Topics:")) {
         currentDay.topics = cleanItem
           .replace("Topics:", "")
@@ -22,13 +31,20 @@ export default function PlanViewer({ plan }) {
       }
     });
 
-    if (Object.keys(currentDay).length > 0) {
-      days.push(currentDay);
+    // Add the last day if it exists
+    if (currentDay.day) {
+      days.push({ ...currentDay });
     }
 
     return days
       .map((dayData) => {
-        const dayNumber = dayData.day.split(" ")[1];
+        // Validate required data
+        if (!dayData.day) return "";
+
+        const dayMatch = dayData.day.match(/Day\s+(\d+)/);
+        if (!dayMatch) return "";
+
+        const dayNumber = dayMatch[1];
         const currentDate = new Date();
         const plannedDate = new Date(currentDate);
         plannedDate.setDate(currentDate.getDate() + (parseInt(dayNumber) - 1));
@@ -39,17 +55,20 @@ export default function PlanViewer({ plan }) {
           weekday: "long",
         });
 
-        const topicsText = dayData.topics
-          .replace(/\s*\(\s*/g, " (")
-          .replace(/\s*\)\s*/g, ") ")
-          .replace(/\s+/g, " ")
-          .trim();
+        // Safely process topics and times with default values
+        const topicsText =
+          (dayData.topics || "")
+            .replace(/\s*\(\s*/g, " (")
+            .replace(/\s*\)\s*/g, ") ")
+            .replace(/\s+/g, " ")
+            .trim() || "No topics specified";
 
-        const timesText = dayData.time
-          .split(";")
-          .map((time) => time.trim())
-          .filter((time) => time)
-          .join("\n");
+        const timesText =
+          (dayData.time || "")
+            .split(";")
+            .map((time) => time.trim())
+            .filter((time) => time)
+            .join("\n") || "No schedule specified";
 
         return `
         <div class="day-plan mb-8 p-6 bg-black bg-opacity-40 rounded-lg border border-blue-700">
@@ -69,8 +88,13 @@ export default function PlanViewer({ plan }) {
         </div>
       `;
       })
+      .filter(Boolean) // Remove empty strings
       .join("");
   };
+
+  if (!plan) {
+    return <div className="mt-6 text-white">No study plan available.</div>;
+  }
 
   return (
     <div className="mt-6">

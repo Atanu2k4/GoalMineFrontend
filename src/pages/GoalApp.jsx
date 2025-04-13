@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // Add this import
-import { auth } from "../firebase"; // Add this import
+import { useAuth } from "../context/AuthContext";
+import { auth } from "../firebase";
 import GoalInput from "../components/GoalInput";
 import AvailabilityForm from "../components/AvailabilityForm";
 import PlanViewer from "../components/PlanViewer";
-import CalendarSyncButton from "../components/CalendarSyncButton";
-import Squares from "../components/Squares"; // Import the Squares component
+import Squares from "../components/Squares";
+import Calendar from "../components/Calendar";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
@@ -29,33 +29,40 @@ function GoalApp() {
     setError(null);
 
     try {
-      // Get the token from the current user
-      const token = await user.getIdToken(); // Changed this line
+      const token = await user.getIdToken();
+      console.log("Sending request with data:", {
+        goal,
+        hoursPerDay,
+        timeSlot,
+      });
 
       const response = await fetch(`${API_BASE_URL}/generate-plan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ goal, hoursPerDay, timeSlot }),
+        body: JSON.stringify({
+          goal,
+          hoursPerDay,
+          timeSlot,
+        }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate plan");
-      }
 
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to generate plan");
       }
 
+      if (!Array.isArray(data.plan) || data.plan.length === 0) {
+        throw new Error("Invalid plan format received");
+      }
+
+      console.log("Received plan:", data.plan);
       setPlan(data.plan);
     } catch (error) {
-      console.error("Error generating plan:", error);
+      console.error("Error details:", error);
       setError(error.message || "Failed to generate plan. Please try again.");
     } finally {
       setIsLoading(false);
@@ -205,60 +212,57 @@ function GoalApp() {
             {plan.length > 0 && (
               <div className="space-y-6 pt-4 border-t border-blue-800">
                 <PlanViewer plan={plan} />
-                <div className="flex flex-col md:flex-row gap-4">
-                  <CalendarSyncButton plan={plan} />
-                  <button
-                    onClick={handleDownloadPDF}
-                    disabled={isLoading}
-                    className={`px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center md:flex-1 ${
-                      isLoading ? "opacity-70 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="w-5 h-5 mr-2"
-                          fill="none"
+                <Calendar plan={plan} />
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={isLoading}
+                  className={`w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center ${
+                    isLoading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
                           stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          ></path>
-                        </svg>
-                        Download PDF
-                      </>
-                    )}
-                  </button>
-                </div>
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        ></path>
+                      </svg>
+                      Download PDF
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
@@ -278,7 +282,7 @@ function GoalApp() {
             </li>
             <li className="flex items-start">
               <span className="text-blue-300 mr-2">•</span>
-              Sync with your calendar to avoid scheduling conflicts
+              Use the calendar view to track your study sessions
             </li>
           </ul>
         </div>
