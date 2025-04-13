@@ -1,6 +1,7 @@
-// pages/GoalApp.jsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext"; // Add this import
+import { auth } from "../firebase"; // Add this import
 import GoalInput from "../components/GoalInput";
 import AvailabilityForm from "../components/AvailabilityForm";
 import PlanViewer from "../components/PlanViewer";
@@ -10,6 +11,7 @@ import Squares from "../components/Squares"; // Import the Squares component
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 function GoalApp() {
+  const { user } = useAuth(); // Add this hook
   const [goal, setGoal] = useState("");
   const [hoursPerDay, setHoursPerDay] = useState("");
   const [timeSlot, setTimeSlot] = useState({ start: "", end: "" });
@@ -27,11 +29,15 @@ function GoalApp() {
     setError(null);
 
     try {
+      // Get the token from the current user
+      const token = await user.getIdToken(); // Changed this line
+
       const response = await fetch(`${API_BASE_URL}/generate-plan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ goal, hoursPerDay, timeSlot }),
       });
@@ -199,12 +205,8 @@ function GoalApp() {
             {plan.length > 0 && (
               <div className="space-y-6 pt-4 border-t border-blue-800">
                 <PlanViewer plan={plan} />
-
                 <div className="flex flex-col md:flex-row gap-4">
-                  <CalendarSyncButton
-                    onClick={() => alert("Sync logic will go here")}
-                  />
-
+                  <CalendarSyncButton plan={plan} />
                   <button
                     onClick={handleDownloadPDF}
                     disabled={isLoading}

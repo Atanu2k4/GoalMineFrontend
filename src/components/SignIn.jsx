@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { signInWithPopup } from "firebase/auth";
-import { auth, provider } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
+import { auth, googleSignIn } from "../firebase";
 import Navbar from "./Navbar";
 import Squares from "./Squares";
 
@@ -11,37 +10,31 @@ const SignIn = () => {
   const navigate = useNavigate();
 
   const handleGoogleSignIn = async (e) => {
-    e.preventDefault(); // Prevent any default button behavior
-
-    if (loading) {
-      return;
-    }
+    e.preventDefault();
+    if (loading) return;
 
     try {
       setLoading(true);
       setError("");
 
-      // Explicitly create a new GoogleAuthProvider for each sign-in attempt
-      const result = await signInWithPopup(auth, provider);
+      const { user, token } = await googleSignIn();
 
-      if (result.user) {
+      if (user) {
         const userData = {
-          uid: result.user.uid,
-          email: result.user.email,
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL,
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          token: token,
         };
 
         localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem("authToken", token);
         navigate("/app");
       }
     } catch (err) {
       console.error("Sign-in error:", err);
-      setError(
-        err.code === "auth/popup-closed-by-user"
-          ? "Sign-in cancelled. Please try again."
-          : "Failed to sign in with Google. Please try again."
-      );
+      setError("Failed to sign in with Google. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -49,6 +42,7 @@ const SignIn = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-blue-900 relative overflow-hidden">
+      {/* Background Animation */}
       <div className="absolute inset-0 opacity-20">
         <Squares
           direction="diagonal"
@@ -59,10 +53,12 @@ const SignIn = () => {
         />
       </div>
 
+      {/* Navbar */}
       <div className="fixed top-0 left-0 right-0 flex justify-center z-50 py-4">
         <Navbar />
       </div>
 
+      {/* Sign In Form */}
       <div className="flex items-center justify-center min-h-screen px-4 relative z-10">
         <div className="bg-black bg-opacity-70 border border-blue-700 rounded-lg p-8 w-full max-w-md shadow-xl relative z-20">
           <div className="text-center mb-8">
@@ -79,10 +75,9 @@ const SignIn = () => {
           )}
 
           <button
-            type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg px-4 py-3 flex items-center justify-center hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer relative z-10"
+            className="w-full bg-blue-600 text-white rounded-lg px-4 py-3 flex items-center justify-center hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed relative"
           >
             {loading ? (
               <div className="flex items-center">
@@ -110,7 +105,7 @@ const SignIn = () => {
                   alt="Google"
                   className="w-5 h-5 mr-2"
                 />
-                <span>Sign in with Google</span>
+                Sign in with Google
               </div>
             )}
           </button>
@@ -120,7 +115,7 @@ const SignIn = () => {
               Don't have an account?{" "}
               <Link
                 to="/signup"
-                className="text-blue-400 hover:text-blue-300 cursor-pointer"
+                className="text-blue-400 hover:text-blue-300 transition"
               >
                 Sign up
               </Link>
