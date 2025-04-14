@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../firebase";
+import { getAuth } from "firebase/auth"; // Add this import
 import GoalInput from "../components/GoalInput";
 import AvailabilityForm from "../components/AvailabilityForm";
 import PlanViewer from "../components/PlanViewer";
@@ -9,6 +10,16 @@ import Squares from "../components/Squares";
 import Calendar from "../components/Calendar";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+
+// ✅ Function to get Firebase token
+const getFirebaseToken = async () => {
+  const user = getAuth().currentUser;
+  if (user) {
+    return await user.getIdToken();
+  } else {
+    throw new Error("User not authenticated");
+  }
+};
 
 function GoalApp() {
   const { user } = useAuth(); // Add this hook
@@ -29,7 +40,9 @@ function GoalApp() {
     setError(null);
 
     try {
-      const token = await user.getIdToken();
+      // Get the token from the current user
+      const token = await getFirebaseToken(); // Changed this line
+      
       console.log("Sending request with data:", {
         goal,
         hoursPerDay,
@@ -40,6 +53,7 @@ function GoalApp() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -49,14 +63,19 @@ function GoalApp() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const errorData = await response.json();
         throw new Error(data.detail || "Failed to generate plan");
       }
 
+      const data = await response.json();
+
       if (!Array.isArray(data.plan) || data.plan.length === 0) {
         throw new Error("Invalid plan format received");
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       console.log("Received plan:", data.plan);
@@ -79,10 +98,12 @@ function GoalApp() {
     setError(null);
 
     try {
+      const token = await getFirebaseToken();
       const response = await fetch(`${API_BASE_URL}/generate-plan-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ goal, hoursPerDay, timeSlot }),
       });
