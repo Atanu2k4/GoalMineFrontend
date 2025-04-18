@@ -14,7 +14,7 @@ export default function Calendar({ plan }) {
     return { daysInMonth, firstDayOfMonth };
   };
 
-  // Format tasks for selected date
+  // Get tasks for selected date function needs to be updated
   const getTasksForDate = (date) => {
     if (!plan || !Array.isArray(plan)) return [];
 
@@ -22,11 +22,19 @@ export default function Calendar({ plan }) {
     const tasks = [];
     let dayCounter = 1;
 
+    // Get current date to calculate relative dates
+    const currentDate = new Date();
+    const startDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      currentDate.getDate()
+    );
+
     for (let i = 0; i < plan.length; i++) {
       const item = plan[i];
       if (item.includes("Day")) {
-        // Calculate the plan date based on the day counter
-        const planDate = new Date(2025, 3, 13); // April 13, 2025
+        // Calculate the plan date starting from today
+        const planDate = new Date(startDate);
         planDate.setDate(planDate.getDate() + (dayCounter - 1));
 
         // Get the next items for topics and time
@@ -43,23 +51,15 @@ export default function Calendar({ plan }) {
       }
     }
 
-    // Compare the calendar date with plan dates using exact date comparison
+    // Compare dates using only year, month, and day
     const selectedTasks = tasks.filter((task) => {
-      const taskDate = new Date(
-        task.date.getFullYear(),
-        task.date.getMonth(),
-        task.date.getDate()
+      return (
+        task.date.getFullYear() === date.getFullYear() &&
+        task.date.getMonth() === date.getMonth() &&
+        task.date.getDate() === date.getDate()
       );
-      const compareDate = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate()
-      );
-
-      return taskDate.getTime() === compareDate.getTime();
     });
 
-    // Return the tasks in the original format
     return selectedTasks.map((task) => `${task.topics}\n${task.time}`);
   };
 
